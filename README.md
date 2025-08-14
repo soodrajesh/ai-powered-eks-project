@@ -47,40 +47,24 @@ This application provides a simple API endpoint that generates text responses ba
 
 ## Project Structure
 
-  
+This repo's structure is as follows:
 
-openai-eks-project1/
-
-├── app/
-
-│ └── src/
-
-│ ├── app.py
-
-│ └── requirements.txt
-
-├── k8s/
-
-│ ├── deployments/
-
-│ │ └── openai-app-deployment.yaml
-
-│ └── services/
-
-│ └── openai-app-service.yaml
-
-├── .github/
-
-│ └── workflows/
-
-│ └── deploy.yml
-
+```
+ai-powered-eks-project/
+├── app.py
+├── requirements.txt
 ├── Dockerfile
-
+├── deploy.sh
+├── dir.sh
+├── openai-app-deployment.yaml
+├── openai-app-service.yaml
+├── openai-secrets.yaml
 └── README.md
+```
 
-  
-  
+> **Note:** The Dockerfile expects `app.py` and `requirements.txt` to be in `app/src/`, but in this repo they are at the root. You must either:
+> - Move `app.py` and `requirements.txt` into `app/src/`, or
+> - Update the Dockerfile to use the correct paths (recommended: change `COPY app/src/requirements.txt .` to `COPY requirements.txt .` and `COPY app/src/app.py .` to `COPY app.py .`).
 
 ## Setup and Deployment
 
@@ -105,62 +89,62 @@ docker build -t your-docker-repo/openai-app:latest .
 docker push your-docker-repo/openai-app:latest
 ```
   
-3. Create a Kubernetes secret for your OpenAI API key:
+3. Create a Kubernetes secret for your OpenAI API key (must match the name in deployment YAML: `openai-secret`):
 
- ```bash
+```bash
 kubectl create secret generic openai-secret --from-literal=api-key=your_openai_api_key
 ```
-  
-4. Apply the Kubernetes configurations:
+
+4. Apply the Kubernetes configurations (YAMLs are at the root of this repo):
 ```bash
-kubectl apply -f k8s/deployments/openai-app-deployment.yaml
+kubectl apply -f openai-app-deployment.yaml
+kubectl apply -f openai-app-service.yaml
 ```
-```bash
-kubectl apply -f k8s/services/openai-app-service.yaml
-```
+
 5. Get the LoadBalancer URL:
 ```bash
 kubectl get services openai-app-service
 ```
-  
-## Usage
 
-  
+## Usage
 
 To generate text, send a POST request to the `/generate` endpoint:
 
-
 ```bash
-
-curl  -X  POST  http://your-loadbalancer-url/generate  \
-
--H  "Content-Type: application/json"  \
-
--d  '{"prompt": "What are the benefits of cloud computing?"}'
-
+curl -X POST http://your-loadbalancer-url/generate \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "What are the benefits of cloud computing?"}'
 ```
 
-{"generated_text":"Cloud computing offers a wide range of benefits for individuals and organizations. Here are some of the key advantages:\n\n1. **Cost Efficiency**: \n - **Reduced Capital Expenses**: Cloud computing eliminates the need for businesses to invest heavily in physical hardware and infrastructure. Instead, they can use a pay-as-you-go model.\n - **Lower Operational Costs**: Maintenance and management of hardware and software are handled by the cloud service provider, reducing operational costs.\n\n2. **Scalability**:"}
-
+Response example:
+```json
+{"generated_text": "Cloud computing offers a wide range of benefits..."}
+```
 
 ## CI/CD
 
-This project uses GitHub Actions for continuous integration and deployment. The workflow is defined in .github/workflows/deploy.yml. It automatically builds and pushes the Docker image, and updates the Kubernetes deployment on push to the main branch.
+This project uses GitHub Actions for continuous integration and deployment. The workflow is defined in `.github/workflows/deploy.yml`. It automatically builds and pushes the Docker image, and updates the Kubernetes deployment on push to the main branch.
 
-Monitoring and Maintenance
+## Monitoring and Maintenance
 
 Monitor the application logs:
-
-```bash 
+```bash
 kubectl logs -f deployment/openai-app
 ```
-Check pod status:
 
-``` bash
+Check pod status:
+```bash
 kubectl get pods
 ```
 
 Update the deployment (e.g., after changing the Docker image):
-``` bash
+```bash
 kubectl set image deployment/openai-app openai-app=your-docker-repo/openai-app:new-tag
 ```
+
+Troubleshooting Tips:
+
+* Make sure the Docker image is built and pushed correctly.
+* Verify that the Kubernetes secret is created with the correct name and API key.
+* Check the YAML file locations and make sure they are applied correctly.
+* If the deployment is not updating, try updating the image tag and re-applying the YAML files.
